@@ -14,7 +14,7 @@ end
     avgseq, results = dba(sequences, [dist=SqEuclidean()]; kwargs...)
 
 Perfoms DTW Barycenter Averaging (DBA) given a collection of `sequences`
-and the current estimate of the average sequence. 
+and the current estimate of the average sequence.
 
 Example usage:
 
@@ -31,12 +31,14 @@ function dba{T<:Sequence}(
         iterations::Int = 1000,
         rtol::Float64 = 1e-5,
         store_trace::Bool = false,
-        show_progress::Bool = true
+        show_progress::Bool = true,
+        i2min::AbstractVector =[],
+        i2max::AbstractVector = [],
     )
 
     # method for computing dtw
     dtwdist = DTWDistance(method,dist)
-    
+
     # initialize dbavg as a random sample from the dataset
     nseq = length(sequences)
     dbavg = deepcopy(init_center)
@@ -60,7 +62,7 @@ function dba{T<:Sequence}(
     while !converged && iter < iterations
 
         # do an iteration of dba
-        newcost = dba_iteration!(newavg, dbavg, counts, sequences, dtwdist)
+        newcost = dba_iteration!(newavg, dbavg, counts, sequences, dtwdist,i2min=i2min,i2max=i2max)
         iter += 1
 
         # store history of cost while optimizing (optional)
@@ -100,12 +102,14 @@ function dba_iteration!{T<:Sequence}(
         oldavg::T,
         counts::Array{Int,1},
         sequences::AbstractVector{T},
-        d::DTWDistance
+        d::DTWDistance;
+        i2min::AbstractVector=[],
+        i2max::AbstractVector=[],
     )
 
     # sum of dtw dist of all sequences to center
     total_cost = 0.0
-    
+
     # store stats for barycenter averages
     scale!(counts,0)
     scale!(newavg,0)
@@ -113,9 +117,13 @@ function dba_iteration!{T<:Sequence}(
     # main ploop
     for seq in sequences
         # time warp signal versus average
-        cost, i1, i2 = distpath(d, oldavg, seq)
+        if isempty(i2min) && isempty(i2max)
+          cost, i1, i2 = distpath(d, oldavg, seq)
+        else
+          cost, i1, i2 = distpath(d, oldavg, seq, i2min, i2max)
+        end
         total_cost += cost
-        
+
         # store stats for barycentric average
         for j=1:length(i2)
             counts[i1[j]] += 1
