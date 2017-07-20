@@ -144,6 +144,14 @@ function dba( s::AbstractArray, args...; kwargs... )
     dba(_sequentize(s), args...; kwargs...)
 end
 
+#=
+# julia v0.6 gives error message LoadError: generated function body is not pure. this likely means it contains a closure or comprehension.
 @generated function _sequentize{T,N}(s::AbstractArray{T,N})
     :( [ Sequence(@ncall($N, view, s, n-> n==$N ? i : Colon())) for i = 1:size(s,2) ] )
+end
+=#
+
+# This function replaces the compile-time function which doesn't work in v0.6
+function _sequentize(s::AbstractArray)
+    [Sequence(s[:,i]) for i=1:size(s,2)]
 end
