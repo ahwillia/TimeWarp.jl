@@ -144,14 +144,14 @@ function dba( s::AbstractArray, args...; kwargs... )
     dba(_sequentize(s), args...; kwargs...)
 end
 
-
-@generated function _sequentize{T,N}(s::AbstractArray{T,N})
-    :( Sequence[ Sequence(@ncall($N, view, s, n-> n==$N ? i : Colon())) for i = 1:size(s,2) ] )
-end
+# weirdly enought, this works for the dtw_dba_miniexample,  but does not work for dtw_dbaclust
+#@generated function _sequentize{T,N}(s::AbstractArray{T,N})
+#    :( Sequence[ Sequence(@ncall($N, view, s, n-> n==$N ? i : Colon())) for i = 1:size(s,2) ] )
+#end
 
 
 # This function replaces the compile-time function which doesn't work in v0.6
 # Compile-time function fixed, generated functions to not support untyped generators
-#function _sequentize(s::AbstractArray)
-#    [Sequence(s[:,i]) for i=1:size(s,2)]
-#end
+function _sequentize(s::AbstractArray)
+    [Sequence(s[:,i]) for i=1:size(s,2)]
+end
