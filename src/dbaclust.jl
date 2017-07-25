@@ -2,7 +2,7 @@
     avgseq, results = dba(sequences, [dist=SqEuclidean()]; kwargs...)
 
 Perfoms DTW Barycenter Averaging (DBA) given a collection of `sequences`
-and the current estimate of the average sequence. 
+and the current estimate of the average sequence.
 
 Example usage:
 
@@ -12,6 +12,50 @@ Example usage:
     avg,result = dba([x,y,z])
 """
 function dbaclust{N,T}(
+        sequences::AbstractVector{Sequence{N,T}},
+        nclust::Int,
+        n_init::Int,
+        _method::DTWMethod,
+        _dist::SemiMetric = SqEuclidean();
+        dbalen::Int = 0,
+        iterations::Int = 100,
+        inner_iterations::Int = 10,
+        rtol::Float64 = 1e-4,
+        store_trace::Bool = true
+    )
+
+    #n_jobs =1
+    best_centers = []
+    best_clustids = []
+    best_result = []
+    best_cost = []
+    for i=1:n_init
+      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,store_trace=store_trace)
+      if isempty(best_cost) || result.cost < best_cost
+        best_centers = deepcopy(centers)
+        best_clustids = deepcopy(clustids)
+        best_result = deepcopy(result)
+        best_cost = best_result.cost
+      end
+    end
+    return best_centers, best_clustids, best_result
+end
+
+
+"""
+    avgseq, results = dba_single(sequences, [dist=SqEuclidean()]; kwargs...)
+
+Perfoms a single DTW Barycenter Averaging (DBA) given a collection of `sequences`
+and the current estimate of the average sequence.
+
+Example usage:
+
+    x = [1,2,2,3,3,4]
+    y = [1,3,4]
+    z = [1,2,2,4]
+    avg,result = dba([x,y,z])
+"""
+function dbaclust_single{N,T}(
         sequences::AbstractVector{Sequence{N,T}},
         nclust::Int,
         _method::DTWMethod,
@@ -36,7 +80,7 @@ function dbaclust{N,T}(
     # dimensions
     nseq = length(sequences)
     maxseqlen = maximum([ length(s) for s in sequences ])
-    
+
     # initialize procedure for computing DTW
     dtwdist = DTWDistance(_method, _dist)
 
@@ -192,7 +236,7 @@ function dbaclust_initial_centers{N,T}(
 
     # number of sequences in dataset
     nseq = length(sequences)
-    
+
     # distance of each datapoint to each center
     dists = zeros(nclust, nseq)
 
