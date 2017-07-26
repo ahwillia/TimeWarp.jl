@@ -21,6 +21,7 @@ function dbaclust{N,T}(
         iterations::Int = 100,
         inner_iterations::Int = 10,
         rtol::Float64 = 1e-4,
+        show_progress::Bool = true,
         store_trace::Bool = true
     )
 
@@ -30,7 +31,7 @@ function dbaclust{N,T}(
     best_result = []
     best_cost = []
     for i=1:n_init
-      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,store_trace=store_trace)
+      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,show_progress=show_progress,store_trace=store_trace)
       if isempty(best_cost) || result.cost < best_cost
         best_centers = deepcopy(centers)
         best_clustids = deepcopy(clustids)
@@ -65,6 +66,7 @@ function dbaclust_single{N,T}(
         iterations::Int = 100,
         inner_iterations::Int = 10,
         rtol::Float64 = 1e-4,
+        show_progress::Bool = true,
         store_trace::Bool = true
     )
 
@@ -104,20 +106,22 @@ function dbaclust_single{N,T}(
     costs = Array(Float64, nseq)
 
     # main loop ##
-    prog = ProgressMeter.ProgressThresh(rtol)
-    ProgressMeter.update!(prog, Inf; showvalues =[(:iteration,iter),
+    if show_progress
+      prog = ProgressMeter.ProgressThresh(rtol)
+      ProgressMeter.update!(prog, Inf; showvalues =[(:iteration,iter),
                                                  (Symbol("max iteration"),iterations),
                                                  (:cost,total_cost)])
+    end#showprogress
 
     while !converged && iter < iterations
-        println("1")
+        show_progress && println("1")
 
         # first, update cluster assignments based on nearest
         # centroid (measured by dtw distance). Keep track of
         # total cost (sum of all distances to centers).
         total_cost = 0.0
         for s = 1:nseq
-            print("*")
+            show_progress && print("*")
             # process sequence s
             seq = sequences[s]
 
@@ -148,7 +152,7 @@ function dbaclust_single{N,T}(
             end
         end
 
-        println("2")
+        show_progress && println("2")
 
         # if any centers are unused, and reassign them to the sequences
         # with the highest cost
@@ -196,16 +200,16 @@ function dbaclust_single{N,T}(
         for i = 1:nclust
             seqs = view(sequences, clus_asgn .== i)
             for inner_iter = 1:inner_iterations
-                print("!")
+                show_progress && print("!")
                 dba_iteration!(sums[i], avgs[i], counts[i], seqs, dtwdist)
                 copy!(avgs[i], sums[i])
             end
-            println(" ")
+            show_progress && println(" ")
         end
 
         # update progress bar
         iter += 1
-        ProgressMeter.update!(prog, Δ; showvalues =[(:iteration,iter),
+        show_progress && ProgressMeter.update!(prog, Δ; showvalues =[(:iteration,iter),
                                                  (Symbol("max iteration"),iterations),
                                                  (:cost,total_cost)])
     end
