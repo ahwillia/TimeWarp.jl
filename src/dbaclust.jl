@@ -21,6 +21,7 @@ function dbaclust{N,T}(
         iterations::Int = 100,
         inner_iterations::Int = 10,
         rtol::Float64 = 1e-4,
+        rtol_inner::Float64 = rtol,
         show_progress::Bool = true,
         store_trace::Bool = true
     )
@@ -31,7 +32,7 @@ function dbaclust{N,T}(
     best_result = []
     best_cost = []
     for i=1:n_init
-      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,show_progress=show_progress,store_trace=store_trace)
+      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,rtol_inner=rtol_inner,show_progress=show_progress,store_trace=store_trace)
       if isempty(best_cost) || result.cost < best_cost
         best_centers = deepcopy(centers)
         best_clustids = deepcopy(clustids)
@@ -66,6 +67,7 @@ function dbaclust_single{N,T}(
         iterations::Int = 100,
         inner_iterations::Int = 10,
         rtol::Float64 = 1e-4,
+        rtol_inner::Float64 = rtol,
         show_progress::Bool = true,
         store_trace::Bool = true
     )
@@ -197,12 +199,23 @@ function dbaclust_single{N,T}(
         end
 
         # add additional inner dba iterations
+
         for i = 1:nclust
             seqs = view(sequences, clus_asgn .== i)
-            for inner_iter = 1:inner_iterations
+            inner_iter = 0
+            converged_inner = false
+            oldcost = 1.0e100
+            while !converged_inner  && inner_iter < inner_iterations
                 show_progress && print("!")
-                dba_iteration!(sums[i], avgs[i], counts[i], seqs, dtwdist)
+                newcost = dba_iteration!(sums[i], avgs[i], counts[i], seqs, dtwdist)
                 copy!(avgs[i], sums[i])
+                inner_iter += 1
+                δ = (oldcost-newcost)/oldcost
+                if δ < rtol_inner
+                  converged = true
+                else
+                  oldcost=newcost
+                end
             end
             show_progress && println(" ")
         end
