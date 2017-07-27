@@ -23,7 +23,9 @@ function dbaclust{N,T}(
         rtol::Float64 = 1e-4,
         rtol_inner::Float64 = rtol,
         show_progress::Bool = true,
-        store_trace::Bool = true
+        store_trace::Bool = true,
+        i2min::AbstractVector=[],
+        i2max::AbstractVector=[]
     )
 
     #n_jobs =1
@@ -32,7 +34,7 @@ function dbaclust{N,T}(
     best_result = []
     best_cost = []
     for i=1:n_init
-      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,rtol_inner=rtol_inner,show_progress=show_progress,store_trace=store_trace)
+      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,rtol_inner=rtol_inner,show_progress=show_progress,store_trace=store_trace,i2min=i2min,i2max=i2max)
       if isempty(best_cost) || result.cost < best_cost
         best_centers = deepcopy(centers)
         best_clustids = deepcopy(clustids)
@@ -69,7 +71,9 @@ function dbaclust_single{N,T}(
         rtol::Float64 = 1e-4,
         rtol_inner::Float64 = rtol,
         show_progress::Bool = true,
-        store_trace::Bool = true
+        store_trace::Bool = true,
+        i2min::AbstractVector =[],
+        i2max::AbstractVector = []
     )
 
     # rename for convienence
@@ -130,7 +134,12 @@ function dbaclust_single{N,T}(
             # find cluster assignment for s
             costs[s] = Inf
             for c_ = 1:nclust
-                cost, i1_, i2_ = distpath(dtwdist, avgs[c_], seq)
+                # if one of the two is empty, use unconstrained window. If both are nonempty, but not the same lenght, distpath will throw error
+                if isempty(i2min) && isempty(i2max)
+                   cost, i1_, i2_ = distpath(dtwdist, avgs[c_], seq)
+                else
+                   cost, i1_, i2_ = distpath(dtwdist, avgs[c_], seq,i2min,i2max)
+                end
                 if cost < costs[s]
                     # store cluster, and match indices
                     c = c_
@@ -165,7 +174,11 @@ function dbaclust_single{N,T}(
             for c in unused
                 avgs[c] = deepcopy(sequences[indmax(costs)])
                 for s = 1:nseq
-                    cost, = distpath(dtwdist, avgs[c], seq)
+                    if isempty(i2min) && isempty(i2max)
+                      cost, = distpath(dtwdist, avgs[c], seq)
+                    else
+                      cost, = distpath(dtwdist, avgs[c], seq,i2min,i2max)
+                    end
                     if costs[s] > cost
                         costs[s] = cost
                     end
@@ -207,7 +220,7 @@ function dbaclust_single{N,T}(
             oldcost = 1.0e100
             while !converged_inner  && inner_iter < inner_iterations
                 show_progress && print("!")
-                newcost = dba_iteration!(sums[i], avgs[i], counts[i], seqs, dtwdist)
+                newcost = dba_iteration!(sums[i], avgs[i], counts[i], seqs, dtwdist; i2min=i2min,i2max=i2max)
                 copy!(avgs[i], sums[i])
                 inner_iter += 1
                 δ = (oldcost-newcost)/oldcost
