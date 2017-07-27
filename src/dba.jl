@@ -33,7 +33,7 @@ function dba{T<:Sequence}(
         store_trace::Bool = false,
         show_progress::Bool = true,
         i2min::AbstractVector =[],
-        i2max::AbstractVector = [],
+        i2max::AbstractVector = []
     )
 
     # method for computing dtw
@@ -62,7 +62,7 @@ function dba{T<:Sequence}(
     while !converged && iter < iterations
 
         # do an iteration of dba
-        newcost = dba_iteration!(newavg, dbavg, counts, sequences, dtwdist,i2min=i2min,i2max=i2max)
+        newcost = dba_iteration!(newavg, dbavg, counts, sequences, dtwdist; i2min=i2min,i2max=i2max)
         iter += 1
 
         # store history of cost while optimizing (optional)
@@ -104,7 +104,7 @@ function dba_iteration!{T<:Sequence}(
         sequences::AbstractVector{T},
         d::DTWDistance;
         i2min::AbstractVector=[],
-        i2max::AbstractVector=[],
+        i2max::AbstractVector=[]
     )
 
     # sum of dtw dist of all sequences to center
@@ -117,6 +117,7 @@ function dba_iteration!{T<:Sequence}(
     # main ploop
     for seq in sequences
         # time warp signal versus average
+        # if one of the two is empty, use unconstrained window. If both are nonempty, but not the same lenght, distpath will throw error
         if isempty(i2min) && isempty(i2max)
           cost, i1, i2 = distpath(d, oldavg, seq)
         else
