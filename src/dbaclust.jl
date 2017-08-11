@@ -1,4 +1,16 @@
 """
+    DBAclustResult(centers,clustids,result)
+
+Holds results of a DBAclust run.
+
+"""
+type DBAclustResult
+    centers::AbstractArray{Sequence}
+    clustids::Array{Int}
+    dbaresult::DBAResult
+end
+
+"""
     avgseq, results = dba(sequences, [dist=SqEuclidean()]; kwargs...)
 
 Perfoms DTW Barycenter Averaging (DBA) given a collection of `sequences`
@@ -22,32 +34,38 @@ function dbaclust{N,T}(
         inner_iterations::Int = 10,
         rtol::Float64 = 1e-4,
         rtol_inner::Float64 = rtol,
+        n_jobs::Int =1,
         show_progress::Bool = true,
         store_trace::Bool = true,
         i2min::AbstractVector=[],
         i2max::AbstractVector=[]
     )
 
-    #n_jobs =1
-    best_centers = []
-    best_clustids = []
-    best_result = []
-    best_cost = []
-    for i=1:n_init
-      centers,clustids,result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,rtol_inner=rtol_inner,show_progress=show_progress,store_trace=store_trace,i2min=i2min,i2max=i2max)
-      if isempty(best_cost) || result.cost < best_cost
-        best_centers = deepcopy(centers)
-        best_clustids = deepcopy(clustids)
-        best_result = deepcopy(result)
-        best_cost = best_result.cost
-      end
-    end
+    if n_jobs == 1
+      best_centers = []
+      best_clustids = []
+      best_result = []
+      best_cost = []
+      for i=1:n_init
+      dbaclust_result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,rtol_inner=rtol_inner,show_progress=show_progress,store_trace=store_trace,i2min=i2min,i2max=i2max)
+        if isempty(best_cost) || dbaclust_result.dbaresult.cost < best_cost
+          best_centers = deepcopy(dbaclust_result.centers)
+          best_clustids = deepcopy(dbaclust_result.clustids)
+          best_result = deepcopy(dbaclust_result.dbaresult)
+          best_cost = best_result.cost
+        end 
+      end #1:n_init
+    else
+ #results = Array{DBAclustResult}(n)_
+     error("parallelism for dbaclust not implemented yet") 
+
+    end # n_jobs  
     return best_centers, best_clustids, best_result
 end
 
 
 """
-    avgseq, results = dba_single(sequences, [dist=SqEuclidean()]; kwargs...)
+    avgseq, results = dbaclust_single(sequences, [dist=SqEuclidean()]; kwargs...)
 
 Perfoms a single DTW Barycenter Averaging (DBA) given a collection of `sequences`
 and the current estimate of the average sequence.
@@ -240,7 +258,7 @@ function dbaclust_single{N,T}(
                                                  (:cost,total_cost)])
     end
 
-    return avgs, clus_asgn, DBAResult(total_cost,converged,iter,cost_trace)
+    return DBAclustResult(avgs, clus_asgn, DBAResult(total_cost,converged,iter,cost_trace))
 end
 
 # Wrapper for AbstractArray of one-dimensional time series.
