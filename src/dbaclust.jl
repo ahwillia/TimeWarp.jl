@@ -7,6 +7,8 @@ Holds results of a DBAclust run.
 type DBAclustResult
     centers::AbstractArray{Sequence}
     clustids::Array{Int}
+    converged::Bool
+    iterations::Int
     dbaresult::DBAResult
 end
 
@@ -42,25 +44,21 @@ function dbaclust{N,T}(
     )
 
     if n_jobs == 1
-      best_centers = []
-      best_clustids = []
       best_result = []
       best_cost = []
       for i=1:n_init
       dbaclust_result = dbaclust_single(sequences,nclust,_method,_dist;dbalen=dbalen,iterations=iterations,inner_iterations=inner_iterations,rtol=rtol,rtol_inner=rtol_inner,show_progress=show_progress,store_trace=store_trace,i2min=i2min,i2max=i2max)
         if isempty(best_cost) || dbaclust_result.dbaresult.cost < best_cost
-          best_centers = deepcopy(dbaclust_result.centers)
-          best_clustids = deepcopy(dbaclust_result.clustids)
-          best_result = deepcopy(dbaclust_result.dbaresult)
-          best_cost = best_result.cost
-        end 
+          best_result = deepcopy(dbaclust_result)
+          best_cost = best_result.dbaresult.cost
+        end
       end #1:n_init
     else
  #results = Array{DBAclustResult}(n)_
-     error("parallelism for dbaclust not implemented yet") 
+     error("parallelism for dbaclust not implemented yet")
 
-    end # n_jobs  
-    return best_centers, best_clustids, best_result
+    end # n_jobs
+    return best_result
 end
 
 
@@ -124,6 +122,8 @@ function dbaclust_single{N,T}(
     # variables storing optimization progress
     converged = false
     iter = 0
+    inner_iter=0
+    converged_inner=false
     last_cost = Inf
     total_cost = 0.0
     cost_trace = Float64[]
@@ -243,7 +243,7 @@ function dbaclust_single{N,T}(
                 inner_iter += 1
                 δ = (oldcost-newcost)/oldcost
                 if δ < rtol_inner
-                  converged = true
+                  converged_inner = true
                 else
                   oldcost=newcost
                 end
@@ -258,7 +258,7 @@ function dbaclust_single{N,T}(
                                                  (:cost,total_cost)])
     end
 
-    return DBAclustResult(avgs, clus_asgn, DBAResult(total_cost,converged,iter,cost_trace))
+    return DBAclustResult(avgs, clus_asgn, converged, iter, DBAResult(total_cost,converged_inner,inner_iter,cost_trace))
 end
 
 # Wrapper for AbstractArray of one-dimensional time series.
