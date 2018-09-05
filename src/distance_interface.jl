@@ -1,5 +1,5 @@
 # methods for estimating dtw #
-abstract DTWMethod
+abstract type DTWMethod end
 
 type ClassicDTW <: DTWMethod end
 
