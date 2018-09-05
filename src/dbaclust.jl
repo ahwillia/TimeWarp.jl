@@ -4,7 +4,7 @@
 Holds results of a DBAclust run.
 
 """
-type DBAclustResult
+mutable struct DBAclustResult
     centers::AbstractArray{Sequence}
     clustids::Array{Int}
     converged::Bool
