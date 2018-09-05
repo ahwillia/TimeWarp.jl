@@ -4,7 +4,7 @@
 Holds results of a DBAclust run.
 
 """
-type DBAclustResult
+mutable struct DBAclustResult
     centers::AbstractArray{Sequence}
     clustids::Array{Int}
     converged::Bool
@@ -110,10 +110,10 @@ function dbaclust_single{N,T}(
 
     # TODO switch to ntuples?
     counts = [ zeros(Int,dbalen) for _ in 1:nclust ]
-    sums = [ Sequence(Array(T,dbalen)) for _ in 1:nclust ]
+    sums = [ Sequence(Array{T}(dbalen)) for _ in 1:nclust ]
 
     # cluster assignments for each sequence
-    clus_asgn = Array(Int, nseq)
+    clus_asgn = Array{Int}(nseq)
     c = 0
 
     # arrays storing path through dtw cost matrix
@@ -127,7 +127,7 @@ function dbaclust_single{N,T}(
     last_cost = Inf
     total_cost = 0.0
     cost_trace = Float64[]
-    costs = Array(Float64, nseq)
+    costs = Array{Float64}(nseq)
 
     # main loop ##
     if show_progress
@@ -311,10 +311,10 @@ function dbaclust_initial_centers{N,T}(
         minimum!(min_dists, dists[1:c,:])
 
         # square distances
-        map!((x)->x^2, min_dists)
+        map!((x)->x^2, min_dists, min_dists)
 
         # sample the next center
-        center_ids[c+1] = sample(1:nseq, WeightVec(view(min_dists,:)))
+        center_ids[c+1] = sample(1:nseq, Weights(view(min_dists,:)))
     end
 
     # return list of cluster centers

@@ -3,7 +3,7 @@
 
 Holds results of a DTW Barycenter Averaging (DBA) fit.
 """
-type DBAResult
+mutable struct DBAResult
     cost::Float64
     converged::Bool
     iterations::Int

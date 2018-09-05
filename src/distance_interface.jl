@@ -1,17 +1,17 @@
 # methods for estimating dtw #
 abstract type DTWMethod end
 
-type ClassicDTW <: DTWMethod end
+mutable struct ClassicDTW <: DTWMethod end
 
-immutable FastDTW <: DTWMethod
+struct FastDTW <: DTWMethod
     radius::Int
 end
 
 # distance interface #
-immutable DTWDistance{M<:DTWMethod, D<:SemiMetric} <: SemiMetric
+struct DTWDistance{M<:DTWMethod, D<:SemiMetric} <: SemiMetric
     method::M
     dist::D
-    DTWDistance(m::M,d::D) = new(m,d)
+    DTWDistance{M,D}(m::M,d::D) where  {M<:DTWMethod, D<:SemiMetric} = new(m,d)
 end
 
 function DTWDistance{M<:DTWMethod,D<:SemiMetric}(
